@@ -5,6 +5,9 @@ import fetch from "node-fetch";
 const app = express();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+/* ===============================
+   STRIPE WEBHOOK (pagamento)
+================================ */
 app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
@@ -21,23 +24,53 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
   }
 
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
-    const telegramId = session.client_reference_id;
+    console.log("💰 Pagamento confirmado na Stripe");
+  }
+
+  res.json({ received: true });
+});
+
+
+/* ===============================
+   TELEGRAM WEBHOOK (bot)
+================================ */
+
+app.use(express.json());
+
+app.post("/telegram", async (req, res) => {
+  const message = req.body.message;
+
+  if (!message) return res.sendStatus(200);
+
+  const chatId = message.chat.id;
+  const text = message.text;
+
+  if (text && text.startsWith("/start")) {
 
     await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: process.env.TELEGRAM_GROUP_ID,
-        text: `✅ Novo VIP liberado! ID: ${telegramId}`
+        chat_id: chatId,
+        text: `🎉 Ödemeniz onaylandı!
+
+VIP grubunuza hemen katılın:
+👉https://t.me/acessoviponf🔥
+
+Hoş geldiniz 🔥`
       })
     });
 
-    console.log("✔️ Pagamento confirmado e aviso enviado ao Telegram");
+    console.log("✅ Link VIP enviado no privado:", chatId);
   }
 
-  res.json({ received: true });
+  res.sendStatus(200);
 });
+
+
+/* ===============================
+   START SERVER
+================================ */
 
 app.listen(3000, () => {
   console.log("🚀 Servidor rodando na porta 3000");
