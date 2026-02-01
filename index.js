@@ -5,26 +5,25 @@ import fetch from "node-fetch";
 const app = express();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+
 /* ===============================
    STRIPE WEBHOOK (pagamento)
 ================================ */
 app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
-  let event;
 
   try {
-    event = stripe.webhooks.constructEvent(
+    stripe.webhooks.constructEvent(
       req.body,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
+
+    console.log("💰 Pagamento confirmado na Stripe");
+
   } catch (err) {
     console.log("❌ Webhook error:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  if (event.type === "checkout.session.completed") {
-    console.log("💰 Pagamento confirmado na Stripe");
+    return res.status(400).send(err.message);
   }
 
   res.json({ received: true });
@@ -32,12 +31,12 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
 
 /* ===============================
-   TELEGRAM WEBHOOK (bot)
+   TELEGRAM WEBHOOK (BOT START)
 ================================ */
 
 app.use(express.json());
 
-app.post("/telegram", async (req, res) => {
+app.post("/telegram-webhook", async (req, res) => {
   const message = req.body.message;
 
   if (!message) return res.sendStatus(200);
@@ -55,13 +54,13 @@ app.post("/telegram", async (req, res) => {
         text: `🎉 Ödemeniz onaylandı!
 
 VIP grubunuza hemen katılın:
-👉https://t.me/acessoviponf🔥
+👉 https://t.me/acessoviponf
 
 Hoş geldiniz 🔥`
       })
     });
 
-    console.log("✅ Link VIP enviado no privado:", chatId);
+    console.log("✅ Link VIP enviado:", chatId);
   }
 
   res.sendStatus(200);
